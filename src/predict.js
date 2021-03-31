@@ -18,56 +18,110 @@ $("#image-selector").change(function () {
 	reader.readAsDataURL(file);
 });
 
+$( document ).ready(function() {
+	$('.progress-bar').hide();
+});
+
 
 let model;
 
 $("#loadBtn").click(async function () {
     console.log("hit");
     $('.progress-bar').show();
-    console.log("model loading");
+	console.log("model loading");
+	
     // const handler = tfn.io.fileSystem("./path/to/your/model.json");
     // model = await tf.loadModel(handler);
     // model = await tf.loadGraphModel("model/model_js/model.json");
-    model = await tf.loadLayersModel('model_2/model.json');
+	model = await tf.loadLayersModel('model_2/model.json');
+	$('#loadBtn').html('Model Loaded');
+	$('#loadBtn').addClass('disabled');
 	$('.progress-bar').hide();
 });
 
+const width = 128;
+const height = 128;
+
+function toMaskImageData(
+    segmentation, num_classes, maskBackground = true) {
+
+  const data = segmentation;
+  const bytes = new Uint8ClampedArray(width * height * 4);
+
+  for (let i = 0; i < height * width; ++i) {
+    const shouldMask = maskBackground ? 1 - data[i] : data[i];
+    // alpha will determine how dark the mask should be.
+	const alpha = shouldMask * 255;
+
+	const predictedClass = data[i];
+	const j = i * 4;
+
+	const classChoiceBG = data[2*i];
+	const classChoicePlant = data[2*i+1];
+
+	if (classChoiceBG < classChoicePlant){
+		bytes[j + 0] = 0;
+		bytes[j + 1] = 255;
+		bytes[j + 2] = 0;
+		bytes[j + 3] = .75 * 255;
+	} else {
+		bytes[j + 0] = 0;
+		bytes[j + 1] = 0;
+		bytes[j + 2] = 0;
+		bytes[j + 3] = .75 * 255;
+	}
+  }
+
+  return new ImageData(bytes, width, height);
+};
 
 
 $("#predictBtn").click(async function () {
     let image = $('#selected-image').get(0);
     
-    console.log("Predict Clicked");
+	console.log("Predict Clicked");
 	
 	let pre_image = tf.browser.fromPixels(image, 3)
-		.resizeNearestNeighbor([128, 128])
+		.resizeNearestNeighbor([width, height])
 		.expandDims()
         .toFloat();
          
-    let predict_result = await model.predict(pre_image);
+	let predict_result = await model.predict(pre_image);
 
-    const img_shape = [128, 128];
+	result = predict_result.dataSync();
 
-    console.log(predict_result);
-    const segPred = tf.image.resizeNearestNeighbor(predict_result);
-    console.log(segPred);
-    const segMask = segPred.argMax(-1).reshape(img_shape);
-    console.log(segMask);
+	console.log(result);
+
+	imgData = toMaskImageData(result, false);
+
+    // for(var i=0;i<result.length;i++){
+    //     result[i]=result[i]*255.0 + 128.0;
+	// }
+
+	// create an offscreen canvas
+	var canvas = document.createElement("canvas");
+	var ctx = canvas.getContext("2d");
+
+	// size the canvas to your desired image
+	canvas.width=width;
+	canvas.height=height;
+
+	ctx.putImageData(imgData, 0, 0);
 
 
-	let order = Array.from(predict_result)
-		.map(function (p, i) { 
-			return {
-				probability: p,
-				className: Result[i] 
-			};
-		}).sort(function (a, b) {
-			return b.probability - a.probability;
-		}).slice(0, 2);
+	// ctx.drawImage(imgData, 0, 0);
 
-	$("#list").empty();
-	order.forEach(function (p) {
-		$("#list").append(`<li>${p.className}: ${parseInt(Math.trunc(p.probability * 100))} %</li>`);
-	});
+	// // create imageData object
+	// var idata = ctx.createImageData(width, height);
+
+	// idata.data.set(buffer);
+
+	// // update canvas with new data
+	// ctx.putImageData(idata, 0, 0);
+
+	var dataUri = canvas.toDataURL();
+
+	$("#predicted-image").attr("src", dataUri);
+
 });
 
