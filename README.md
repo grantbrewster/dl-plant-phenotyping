@@ -14,6 +14,7 @@ List of datasets:
 * [Controlled Environment Agriculture Open Data Project](https://ceaod.github.io/)
 * [APS Dataset Site on plants](https://www.apsnet.org/edcenter/resources/ImageDatabase/Pages/default.aspx)
 * [Apple Disease Paper/Dataset](https://bsapubs.onlinelibrary.wiley.com/doi/10.1002/aps3.11390)
+* [Dataset aggregation from Quantitative Plant](https://www.quantitative-plant.org/)
 
 
 
